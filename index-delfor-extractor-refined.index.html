@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DELFOR PDF Extractor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --bg:#fcf8fa;--card:rgba(255,255,255,.92);--line:#eadbe2;--text:#2d2430;--muted:#7e717b;
+      --primary:#c86b8f;--primary2:#af5879;--success:#c86b8f;--warn:#e5a0be;--danger:#dc2626;
+      --plum:#5a4752;--rose:#f6e8ee;--rose-deep:#9e5b79;--cream:#fffdfb;
+      --shadow:0 16px 40px rgba(160,96,123,.08);--r:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Pretendard,Apple SD Gothic Neo,sans-serif;background:linear-gradient(180deg,#fffefe 0%,#fcf8fa 44%,#fbf6f8 100%);color:var(--text);position:relative;overflow-x:hidden}
+    body::before,body::after{content:"";position:fixed;pointer-events:none;z-index:0;filter:blur(24px);opacity:.55}
+    body::before{width:360px;height:360px;left:-120px;top:-70px;background:radial-gradient(circle,#f6e2ea 0,rgba(246,226,234,0) 72%)}
+    body::after{width:420px;height:420px;right:-140px;top:140px;background:radial-gradient(circle,#f2dde7 0,rgba(242,221,231,0) 72%)}
+    .wrap{max-width:1140px;margin:0 auto;padding:28px 24px 52px;position:relative;z-index:1}
+    .hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 300px;align-items:center;gap:28px;background:linear-gradient(180deg,rgba(255,255,255,.96) 0%,rgba(252,245,248,.98) 100%);color:var(--text);padding:42px 40px;border-radius:32px;box-shadow:0 20px 54px rgba(160,96,123,.10);margin:18px 0 24px;border:1px solid rgba(234,219,226,.95)}
+    .hero::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));pointer-events:none}
+    .hero::after{content:"";position:absolute;right:-48px;top:-54px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(246,232,238,.95),rgba(246,232,238,0) 72%)}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:8px 0 16px;padding:12px 16px;border:1px solid rgba(238,217,228,.95);border-radius:999px;background:rgba(255,255,255,.8);backdrop-filter:blur(14px);box-shadow:0 12px 28px rgba(169,75,115,.05)}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand-mark{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#7d415d,#d67ea4 72%,#f4d2e1);color:#fff;font-size:18px;font-weight:900;box-shadow:0 14px 28px rgba(204,92,137,.16)}
+    .brand-copy{display:flex;flex-direction:column;gap:2px}
+    .brand-copy b{font-size:14px;letter-spacing:-.02em;color:var(--text)}
+    .brand-copy span{font-size:12px;color:var(--muted);display:none}
+    .topbar-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .top-link{padding:9px 12px;border-radius:12px;color:#715867;text-decoration:none;font-size:13px;font-weight:700;transition:.18s}
+    .top-link:hover{background:#fff1f6;color:var(--primary2)}
+    .top-pill{padding:9px 12px;border-radius:999px;background:#fff6f9;border:1px solid #f1dce5;color:var(--primary2);font-size:12px;font-weight:800}
+    .hero-copy,.hero-visual{position:relative;z-index:1}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid rgba(231,218,225,.95);font-size:12px;font-weight:700;color:#8d7380;letter-spacing:.04em;backdrop-filter:blur(10px)}
+    .hero h1{margin:16px 0 0;font-family:'Inter',system-ui,sans-serif;font-size:52px;letter-spacing:-.05em;line-height:1;font-weight:800;max-width:none;color:#3a2e36}
+    .hero p{margin:14px 0 0;color:#756973;line-height:1.7;font-size:15px;max-width:34ch}
+    .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+    .badge{padding:7px 12px;border-radius:999px;font-size:12px;font-weight:700;background:#fff;border:1px solid rgba(232,218,225,.96);backdrop-filter:blur(10px);color:#8b7480}
+    .hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+    .hero-cta .btn{box-shadow:none}
+    .hero-visual{display:flex;justify-content:flex-end}
+    .visual-card{width:100%;max-width:280px;padding:18px;border-radius:24px;background:rgba(255,255,255,.84);border:1px solid rgba(231,216,223,.96);backdrop-filter:blur(14px);box-shadow:0 14px 32px rgba(160,96,123,.07)}
+    .visual-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;color:#8a7480;font-size:12px;font-weight:700}
+    .visual-dots{display:flex;gap:5px}
+    .visual-dots span{width:6px;height:6px;border-radius:50%;background:#d6afc1}
+    .visual-panel{background:rgba(255,255,255,.92);border-radius:20px;padding:16px;min-height:212px;color:#4a2138;display:flex;flex-direction:column;justify-content:space-between;border:1px solid #f2dfe8}
+    .visual-kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#ad6a88;font-weight:800}
+    .visual-title{font-family:'Inter',system-ui,sans-serif;font-size:24px;line-height:1.2;margin:8px 0 14px;color:#4b3b44;font-weight:700;letter-spacing:-.03em}
+    .visual-list{display:grid;gap:8px}
+    .visual-item{display:flex;align-items:center;justify-content:space-between;padding:10px 11px;border-radius:14px;background:#fff8fb;border:1px solid #f1dce5;font-size:12px;font-weight:700;color:#6b3751}
+    .visual-chip{display:inline-flex;align-items:center;justify-content:center;padding:5px 9px;border-radius:999px;background:#fbe6ef;color:#b44873;font-size:11px;font-weight:800}
+    .card{background:var(--card);border:1px solid rgba(241,223,232,.98);border-radius:26px;box-shadow:var(--shadow);padding:24px;margin-bottom:18px;backdrop-filter:blur(10px);transition:transform .18s ease, box-shadow .18s ease}
+    .card:hover{transform:translateY(-1px);box-shadow:0 22px 46px rgba(169,75,115,.09)}
+    .sec-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .sec-sub{display:none}
+    .step{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:8px;background:var(--primary);color:#fff;font-size:12px;font-weight:800}
+    .step.green{background:var(--success)}
+    h2{margin:0;font-size:20px;letter-spacing:-.02em}
+    .drop{border:1.5px dashed #dec8d3;border-radius:20px;background:#fff;padding:42px 18px;text-align:center;cursor:pointer;transition:.2s;box-shadow:none}
+    .drop.drag{border-color:var(--primary);background:#fcf4f8;transform:scale(1.005)}
+    .drop .big{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:38px;padding:0 14px;border-radius:999px;background:#f7eef2;color:#9b6a81;font-size:12px;font-weight:800;letter-spacing:.08em}
+    .drop .main{font-size:18px;font-weight:800;margin:14px 0 6px;letter-spacing:-.02em}
+    .drop .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+    .btn{border:0;border-radius:14px;padding:12px 17px;font-weight:800;cursor:pointer;transition:.18s;box-shadow:0 8px 20px rgba(169,75,115,.08)}
+    .btn:hover{transform:translateY(-1px)}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .btn.primary{background:linear-gradient(135deg,#cc7b9b,#bc6b8c 55%,#ab5c7b);color:#fff}
+    .btn.primary:hover{background:linear-gradient(135deg,#c56f92,#b56082 55%,#a35273)}
+    .btn.success{background:linear-gradient(135deg,#ce5f8d,#b94a77,#9f3964);color:#fff}
+    .btn.warn{background:linear-gradient(135deg,#f2b2cc,#e38ab0,#cf5c89);color:#fff}
+    .btn.ghost{background:rgba(255,255,255,.72);border:1px solid #ecd7e1;color:#6b3751}
+    .btn.full{width:100%;justify-content:center}
+    .filebox{margin-top:16px;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:none;background:rgba(255,255,255,.76)}
+    .filebox-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#fff7fb;border-bottom:1px solid var(--line);font-size:14px;font-weight:800}
+    .file-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #edf2f7;font-size:14px}
+    .file-item:last-child{border-bottom:0}
+    .file-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .file-size{color:var(--muted);font-size:12px}
+    .status{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800}
+    .pending{background:#fef3c7;color:#92400e}
+    .done{background:#dcfce7;color:#166534}
+    .error{background:#fee2e2;color:#991b1b}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+    .opt{display:flex;gap:12px;padding:15px;border:1px solid var(--line);border-radius:18px;cursor:pointer;background:linear-gradient(180deg,#fff,#fff9fb);transition:.18s}
+    .opt:hover{border-color:#ebb5cf;background:#fff2f8;transform:translateY(-1px)}
+    .opt input{margin-top:3px}
+    .opt strong{display:block;font-size:14px}
+    .opt small{display:block;color:var(--muted);margin-top:4px}
+    .row{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+    .radio{display:flex;align-items:center;gap:8px;font-size:14px}
+    .select{padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:14px;min-width:260px;color:var(--text)}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    .tabs,.subtabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid #e7eef7;margin-bottom:14px}
+    .tab,.subtab{border:0;background:transparent;padding:10px 14px;border-bottom:2px solid transparent;border-radius:10px 10px 0 0;font-weight:800;color:#667085;cursor:pointer}
+    .tab.active,.subtab.active{color:var(--primary2);border-bottom-color:var(--primary2);background:#fff0f7}
+    .subtab.active{color:var(--primary2);border-bottom-color:var(--primary2);background:#fff0f7}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
+    table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
+    thead th{background:#b85f84;color:#fff;padding:10px 12px;text-align:left;white-space:nowrap}
+    tbody td{padding:9px 12px;border-bottom:1px solid #f1e7ec;white-space:nowrap}
+    tbody tr:nth-child(even){background:#fffafb}
+    tbody tr:hover{background:#fff2f7}
+    .muted{color:#98a2b3}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:14px}
+    .stat{background:#fff8fb;border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center}
+    .stat b{display:block;font-size:28px;color:var(--primary)}
+    .plan-head{display:inline-block;background:#fff8fb;border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:12px}
+    .plan-head table td{padding:3px 16px 3px 0;border:0;background:transparent}
+    .plan-head table td:first-child{font-weight:800;color:#667085}
+    .plan-table thead tr:nth-child(2) th{background:#cf4f86}
+    .plan-table thead tr:nth-child(3) th{background:#e777a8}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+    .cum{font-weight:800;color:#d63384}
+    .backorder td{background:#fef3c7 !important;color:#92400e;font-weight:800}
+    .total td{background:#b83280 !important;color:#fff !important;font-weight:800}
+    .note{margin-top:10px;color:var(--muted);font-size:12px}
+    .overlay{position:fixed;inset:0;background:rgba(74,26,53,.34);display:none;align-items:center;justify-content:center;z-index:30;backdrop-filter:blur(6px)}
+    .loader{background:#fff;border-radius:24px;padding:28px;min-width:300px;box-shadow:var(--shadow);text-align:center;border:1px solid #f0d7e4}
+    .spin{width:46px;height:46px;border:4px solid #dbe3ef;border-top-color:var(--primary);border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .bar{height:8px;background:#e8eef8;border-radius:999px;overflow:hidden;margin:12px 0 6px}
+    .bar>div{height:100%;width:0;background:var(--primary);transition:.2s}
+    .toast{position:fixed;right:22px;bottom:22px;z-index:40;padding:12px 16px;border-radius:12px;font-weight:800;box-shadow:var(--shadow)}
+    .toast.ok{background:#fff0f7;color:#a3195b;border:1px solid #f6c1d9}
+    .toast.err{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+    .footer{padding:8px 24px 32px;color:#98a2b3;text-align:center;font-size:12px}
+    @media(max-width:920px){.hero{grid-template-columns:1fr;padding:36px 28px}.hero-visual{justify-content:flex-start}.visual-card{max-width:320px}}
+    @media(max-width:640px){.wrap{padding:14px}.topbar{padding:10px 12px;border-radius:20px}.topbar-links{display:none}.hero{border-radius:28px;padding:30px 22px}.hero h1{font-size:40px}.hero-cta{flex-direction:column}.visual-card{max-width:none}.select{min-width:100%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-mark">D</span>
+        <div class="brand-copy">
+          <b>DELFOR Extractor</b>
+          <span></span>
+        </div>
+      </div>
+      <div class="topbar-links">
+        <a class="top-link" href="#dropZone">업로드</a>
+        <a class="top-link" href="#extractBtn">추출</a>
+        <a class="top-link" href="#resultCard">결과</a>
+        <span class="top-pill">Single File</span>
+      </div>
+    </div>
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">Shipment Schedule Extraction</div>
+        <h1>DELFOR Extractor</h1>
+        <p>출고 일정 PDF를 정리하고 Excel과 계획표로 변환합니다.</p>
+        <div class="badges">
+          <span class="badge">PDF Upload</span>
+          <span class="badge">Excel Export</span>
+          <span class="badge">Plan Output</span>
+        </div>
+        <div class="hero-cta">
+          <a class="btn primary" href="#dropZone">PDF 업로드</a>
+          <a class="btn ghost" href="#extractBtn">바로 추출</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="visual-card">
+          <div class="visual-card-top">
+            <span>Preview</span>
+            <div class="visual-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="visual-panel">
+            <div>
+              <div class="visual-kicker">Workflow</div>
+              <div class="visual-title">Shipment planning ready</div>
+            </div>
+            <div class="visual-list">
+              <div class="visual-item"><span>Material</span><span class="visual-chip">Included</span></div>
+              <div class="visual-item"><span>Reference</span><span class="visual-chip">Included</span></div>
+              <div class="visual-item"><span>Schedule</span><span class="visual-chip">Included</span></div>
+              <div class="visual-item"><span>Plan</span><span class="visual-chip">Included</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sec-title">
+        <span class="step">STEP 1</span>
+        <h2>PDF 업로드</h2>
+      </div>
+
+      <div class="drop" id="dropZone">
+        <input id="fileInput" type="file" accept=".pdf" multiple hidden />
+        <div class="big">PDF</div>
+        <div class="main">PDF 파일 업로드</div>
+        <div class="sub">드래그 앤 드롭 또는 파일 선택</div>
+        <button class="btn primary" type="button" id="pickBtn">파일 선택</button>
+      </div>
+
+      <div class="filebox" id="fileBox">
+        <div class="filebox-head">
+          <span>선택된 파일</span>
+          <button class="btn ghost" id="clearBtn" type="button">전체 삭제</button>
+        </div>
+        <div id="fileList"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sec-title">
+        <span class="step">STEP 2</span>
+        <h2>추출 옵션</h2>
+      </div>
+
+      <div class="grid" style="margin-bottom:16px">
+        <label class="opt">
+          <input type="checkbox" id="optMaterial" checked />
+          <div><strong>Material-related Information</strong></div>
+        </label>
+        <label class="opt">
+          <input type="checkbox" id="optReference" checked />
+          <div><strong>Additional Reference Data</strong></div>
+        </label>
+        <label class="opt">
+          <input type="checkbox" id="optSchedule" checked />
+          <div><strong>Schedule Lines</strong></div>
+        </label>
+        <label class="opt">
+          <input type="checkbox" id="optPlan" checked />
+          <div><strong>출고 계획표</strong></div>
+        </label>
+      </div>
+
+      <div class="row" style="margin-bottom:14px">
+        <label class="radio"><input type="radio" name="sheetMode" value="separate" checked /> 시트 분리</label>
+        <label class="radio"><input type="radio" name="sheetMode" value="combined" /> 파일별 통합</label>
+      </div>
+
+      <div class="row" style="margin-bottom:18px">
+        <label style="font-weight:800">고객사 타입</label>
+        <select id="custType" class="select">
+          <option value="auto">자동 감지</option>
+          <option value="ZF_MEXICO">ZF Mexico (월요일 기준)</option>
+          <option value="ZF_DUNCAN">ZF Duncan (월요일 기준)</option>
+          <option value="ZF_SOUTH_AFRICA">ZF South Africa (화요일 기준)</option>
+          <option value="ZF_INDIA">ZF India (수요일 기준)</option>
+          <option value="BMW">BMW (월요일 기준, ETA)</option>
+        </select>
+      </div>
+
+      <button class="btn primary full" id="extractBtn" disabled type="button">데이터 추출</button>
+    </section>
+
+    <section class="card" id="resultCard" style="display:none">
+      <div class="sec-title">
+        <span class="step green">STEP 3</span>
+        <h2>결과 미리보기</h2>
+        <div class="toolbar" style="margin-left:auto">
+          <button class="btn success" id="downloadBase" type="button">기본 데이터 Excel</button>
+          <button class="btn warn" id="downloadPlan" type="button">출고 계획표 Excel</button>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs"></div>
+      <div id="tabContent"></div>
+      <div class="stats" id="stats"></div>
+    </section>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="loader">
+      <div class="spin"></div>
+      <div id="loadingText" style="font-weight:800">PDF 분석 중...</div>
+      <div class="bar"><div id="progressBar"></div></div>
+      <div id="progressText" class="muted" style="font-size:13px">0 / 0</div>
+    </div>
+  </div>
+
+  <div class="footer">DELFOR Extractor</div>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+    const $ = s => document.querySelector(s);
+    const state = { files: [], parsed: [], plans: [], activeTab: 'plan', activePlanIdx: 0 };
+
+    const CUSTOMER_DAY_MAP = {
+      BMW: 1, ZF_DUNCAN: 1, ZF_MEXICO: 1, ZF_SOUTH_AFRICA: 2, ZF_INDIA: 3, ZF_DEFAULT: 1
+    };
+    const CUSTOMER_DATE_LABEL = {
+      BMW: '(ETA)', ZF_DUNCAN: '(출고일)', ZF_MEXICO: '(출고일)',
+      ZF_SOUTH_AFRICA: '(출고일)', ZF_INDIA: '(출고일)', ZF_DEFAULT: '(출고일)'
+    };
+    const CUSTOMER_TYPE_TEXT = {
+      BMW: 'BMW (월요일 · ETA 기준)',
+      ZF_DUNCAN: 'ZF Duncan (월요일 기준)',
+      ZF_MEXICO: 'ZF Mexico (월요일 기준)',
+      ZF_SOUTH_AFRICA: 'ZF South Africa (화요일 기준)',
+      ZF_INDIA: 'ZF India (수요일 기준)',
+      ZF_DEFAULT: '기본 (월요일 기준)'
+    };
+
+    function esc(v){return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+    function shortName(v,n=32){return String(v||'').replace(/\.pdf$/i,'').slice(0,n)}
+    function fmtBytes(b){return b<1024?`${b} B`:b<1048576?`${(b/1024).toFixed(1)} KB`:`${(b/1048576).toFixed(1)} MB`}
+    function fmtNum(v){if(v===null||v===undefined||v==='')return ''; return Number(v).toLocaleString('ko-KR')}
+    function delay(ms){return new Promise(r=>setTimeout(r,ms))}
+    function num(v){const n = parseFloat(String(v ?? '').replace(/,/g,'')); return isNaN(n)?'':n}
+    function fileStatus(i){ const p = state.parsed[i]; if(!p) return ['pending','대기']; return p._error ? ['error','오류'] : ['done','완료']; }
+    function showToast(msg,type='ok'){
+      const el=document.createElement('div'); el.className=`toast ${type==='ok'?'ok':'err'}`; el.textContent=msg; document.body.appendChild(el); setTimeout(()=>el.remove(),3200);
+    }
+    function showLoading(show){$('#overlay').style.display=show?'flex':'none'}
+    function setProgress(done,total,msg){ $('#loadingText').textContent=msg; $('#progressText').textContent=`${done} / ${total}`; $('#progressBar').style.width = total?`${Math.round(done/total*100)}%`:'0%'; }
+
+    function normalizeDate(raw){
+      if(!raw) return '';
+      const m = String(raw).match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
+      if(!m) return String(raw).trim();
+      const yy = +m[1], mm = String(+m[2]).padStart(2,'0'), dd = String(+m[3]).padStart(2,'0');
+      const year = yy >= 0 && yy <= 50 ? 2000 + yy : 1900 + yy;
+      const tm = String(raw).match(/(\d{1,2}:\d{2}\s*(?:am|pm))/i);
+      return `${year}-${mm}-${dd}${tm ? ' '+tm[1] : ''}`;
+    }
+
+    function pick(text, patterns){ for(const p of patterns){ const m = text.match(p); if(m && m[1] && String(m[1]).trim()) return String(m[1]).trim(); } return ''; }
+
+    function extractShipToLabel(fullText, pageTexts){
+      const lines = pageTexts.flat();
+      let block = '';
+      for(let i=0;i<lines.length;i++){
+        if(/^ship.?to\b/i.test(lines[i].trim())){ block = lines.slice(i, i+12).join('\n'); break; }
+      }
+      const s = (block || fullText).toLowerCase();
+      if(/\bbmw\b/i.test(block || fullText)){ const partner = (block || fullText).match(/\b(3\d{4}|6\d{4})\b/); return partner ? `BMW(${partner[1]})` : 'BMW'; }
+      if(/south\s*africa|pretoria|durban|johannesburg|\bza\b/i.test(s)) return 'ZF SA';
+      if(/\bindia\b|pune|chennai|bangalore|mumbai|\bin\b/i.test(s)) return 'ZF IN';
+      if(/mexico|toluca|monterrey|san\s*luis|guadalajara|\bmx\b/i.test(s)) return 'ZF MX';
+      if(/duncan|united\s*states|usa|south\s*carolina|north\s*carolina|michigan|ohio|\bus\b/i.test(s)) return 'ZF US';
+      if(/south\s*africa/i.test(fullText)) return 'ZF SA';
+      if(/\bindia\b/i.test(fullText)) return 'ZF IN';
+      if(/mexico|toluca/i.test(fullText)) return 'ZF MX';
+      if(/duncan/i.test(fullText)) return 'ZF US';
+      return 'ZF';
+    }
+
+    function detectCustomerType(customerName, text){
+      const s = `${customerName||''} ${text||''}`.toLowerCase();
+      if(/bmw/i.test(s)) return 'BMW';
+      if(/south\s*africa/i.test(s)) return 'ZF_SOUTH_AFRICA';
+      if(/\bindia\b/i.test(s)) return 'ZF_INDIA';
+      if(/duncan/i.test(s)) return 'ZF_DUNCAN';
+      if(/mexico|toluca|san\s*luis|\bmx\b/i.test(s)) return 'ZF_MEXICO';
+      return 'ZF_DEFAULT';
+    }
+
+    function parseMaterialInfo(text, pageTexts){
+      const lines = pageTexts.flat();
+      let orderNumber='', orderPosition='';
+      const header = text.match(/Order Number[^:]*\|\s*Order Position[:\s]*(\d+)\s*[|:]\s*(\d+)/i);
+      const on = text.match(/Order Number[:\s|]+(\d+)/i);
+      const op = text.match(/Order Position[:\s|]+(\d+)/i);
+      if(header){orderNumber=header[1]; orderPosition=header[2]}
+      if(!orderNumber && on) orderNumber=on[1];
+      if(!orderPosition && op) orderPosition=op[1];
+      if(!orderNumber){ const m = text.match(/(\d{10})\s*[|]\s*(\d+)/); if(m){orderNumber=m[1]; orderPosition=m[2]} }
+
+      let matCustomer='';
+      const matLine = lines.find(l=>/Material\s*\(Customer\)/i.test(l));
+      if(matLine){ const m = matLine.match(/Material\s*\(Customer\)[:\s]*([A-Z0-9\-]+)/i); if(m) matCustomer=m[1]; }
+      if(!matCustomer){ const m = text.match(/Material:\s*([A-Z0-9\-]+)/i); if(m) matCustomer=m[1]; }
+
+      let matDesc='';
+      const descLine = lines.find(l=>/Material description\s*\(Customer\)/i.test(l));
+      if(descLine){
+        const idx = lines.indexOf(descLine);
+        const m = descLine.match(/Material description\s*\(Customer\)[:\s]*(.*)/i);
+        if(m && m[1].trim()) matDesc = m[1].trim(); else if(idx+1<lines.length) matDesc = lines[idx+1].trim();
+      }
+      if(!matDesc){ const m = text.match(/WHEEL\s+BEARING[A-Z0-9\s\/\-]+/i); if(m) matDesc=m[0].trim(); }
+
+      let docNo='', msgNum='', dinCurrent='', dinOld='', dinCurrentDate='', dinOldDate='';
+      const docLine = lines.find(l=>/Document No\./i.test(l)); if(docLine){const m=docLine.match(/Document No\.\s*[:\s]*(\d+)/i); if(m) docNo=m[1]}
+      const msgLine = lines.find(l=>/Message Number/i.test(l)); if(msgLine){const m=msgLine.match(/Message Number[:\s]+(\d+)/i); if(m) msgNum=m[1]}
+      for(const line of lines){ const mo = line.match(/Delivery Instruction Number Old[:\s]+(\d+)/i); if(mo) dinOld=mo[1]; const mc = line.match(/Delivery Instruction Number[:\s]+(\d+)/i); if(mc && !/old/i.test(line)) dinCurrent=mc[1]; }
+
+      let incoterms = '';
+      const inco = lines.find(l=>/Incoterms/i.test(l));
+      if(inco){ const m = inco.match(/Incoterms[:\s]*(FCA.*)/i); if(m) incoterms=m[1].trim(); else { const idx = lines.indexOf(inco); if(idx+1<lines.length) incoterms=lines[idx+1].trim(); } }
+      if(!incoterms){ const m = text.match(/(FCA\s+[A-Za-z0-9,\-\s]+(?:Korea|South Korea|USA|MX|Germany)?)/i); if(m) incoterms=m[1].trim(); }
+
+      let uom='';
+      const uomLine = lines.find(l=>/\bUoM\b/i.test(l)); if(uomLine){const m=uomLine.match(/UoM[:\s]+([A-Z]+)/i); if(m) uom=m[1]}
+      if(!uom){const m=text.match(/UoM[:\s]+([A-Z]+)/i); if(m) uom=m[1]}
+
+      let transmissionDate='';
+      const tl = lines.find(l=>/Transmission Date/i.test(l)); if(tl){ const m=tl.match(/Transmission Date[:\s]+(\d{2}\.\s*\d{1,2}\.\s*\d{1,2}.*)/i); if(m) transmissionDate=normalizeDate(m[1]); }
+
+      let productionRelease='';
+      const pl = lines.find(l=>/Production Release/i.test(l)); if(pl){ const m=pl.match(/Production Release[:\s]+(\d{2}\.\s*\d{1,2}\.\s*\d{1,2})/i); if(m) productionRelease=normalizeDate(m[1]); }
+
+      if(dinCurrent){ const line = lines.find(l=>/Delivery Instruction Number\b/i.test(l) && !/old/i.test(l)); if(line){const m=line.match(/(\d{2}\.\s*\d{1,2}\.\s*\d{1,2})/); if(m) dinCurrentDate=normalizeDate(m[1])} }
+      if(dinOld){ const line = lines.find(l=>/Delivery Instruction Number Old/i.test(l)); if(line){const m=line.match(/(\d{2}\.\s*\d{1,2}\.\s*\d{1,2})/); if(m) dinOldDate=normalizeDate(m[1])} }
+
+      return {
+        'Material (Customer)': matCustomer || pick(text,[/Material\s*\(Customer\)[:\s]+([A-Z0-9\-]+)/i]),
+        'Material (Supplier)': pick(text,[/Material\s*\(Supplier\)[:\s]+([^\n\r]+)/i]),
+        'Material Description (Customer)': matDesc,
+        'Material Descr. (Supplier)': pick(text,[/Material Descr\.\s*\(Supplier\)[:\s]+([^\n\r]+)/i]),
+        'Engineering Change Level': pick(text,[/Engineering Change Level[:\s]+([^\n\r]+)/i]),
+        'UoM': uom,
+        'Incoterms': incoterms,
+        'Supply Model': pick(text,[/Supply Model[:\s]+([^\n\r]+)/i]),
+        'Document No.': docNo,
+        'Transmission Date': transmissionDate,
+        'Message Number': msgNum,
+        'Validity Period': pick(text,[/Validity Period[:\s]+([^\n\r]+)/i]),
+        'Delivery Instruction Number': dinCurrent,
+        'DIN Date': dinCurrentDate,
+        'Delivery Instruction Number Old': dinOld,
+        'DIN Old Date': dinOldDate,
+        'Order Number': orderNumber,
+        'Order Position': orderPosition,
+        'Production Release': productionRelease,
+        'Material Release': pick(text,[/Material Release[:\s]+([^\n\r]+)/i]),
+        'Transport Mode': pick(text,[/Transport Mode[:\s]+([^\n\r]+)/i]),
+      };
+    }
+
+    function parseReferenceData(text, pageTexts){
+      const lines = pageTexts.flat();
+      let deliveryNoteNo='', deliveryNoteDate='', quantity='', cumReceived='', startDateCum='', lastCumBeforeReset='';
+      for(const line of lines){
+        let m=line.match(/Deliverynote Number[:\s]+(\d+)/i); if(m) deliveryNoteNo=m[1];
+        m=line.match(/Current cumulated[:\s]+(\d[\d,]*)/i); if(m) cumReceived=m[1];
+        m=line.match(/Start date of current[:\s]+(\d{2}\.\s*\d{1,2}\.\s*\d{1,2})/i); if(m) startDateCum=normalizeDate(m[1]);
+        m=line.match(/Last cumulated[:\s]+(\d[\d,]*)/i); if(m) lastCumBeforeReset=m[1];
+      }
+      const section = text.match(/Additional Reference Data[\s\S]*?Schedule Lines/i);
+      if(section){
+        const s = section[0];
+        let m = s.match(/Date[:\s]+(\d{2}\.\s*\d{1,2}\.\s*\d{1,2})/i); if(m) deliveryNoteDate=normalizeDate(m[1]);
+        m = s.match(/Quantity[:\s]+([\d,]+)/i); if(m) quantity=m[1];
+      }
+      if(!deliveryNoteDate || !quantity){
+        const dnLine = lines.find(l=>/Deliverynote/i.test(l));
+        if(dnLine){
+          let m = dnLine.match(/(\d{2}\.\s*\d{1,2}\.\s*\d{1,2})/); if(m && !deliveryNoteDate) deliveryNoteDate=normalizeDate(m[1]);
+          m = dnLine.match(/([\d,]{4,})\s*$/); if(m && !quantity) quantity=m[1];
+        }
+      }
+      return {
+        'Deliverynote Number': deliveryNoteNo,
+        'Deliverynote Date': deliveryNoteDate,
+        'Quantity': quantity,
+        'Current Cumulated Qty Received': cumReceived,
+        'Start Date of Current Cumulated Qty': startDateCum,
+        'Last Cumulated Qty Before Resetting': lastCumBeforeReset,
+      };
+    }
+
+    function parseScheduleLines(text, pageTexts){
+      const lines = pageTexts.flat(); const out = []; let on = false;
+      const skip = ['Delivery Date','Pickup Date','Dispatch','cum. Quantity','Difference','Commit','Schedule Lines'];
+      for(let i=0;i<lines.length;i++){
+        const line = lines[i];
+        if(/Schedule Lines/i.test(line)){ on = true; continue; }
+        if(!on) continue; if(skip.some(k=>line.includes(k))) continue;
+        const d1 = line.match(/^(\d{2}\.\s*\d{1,2}\.\s*\d{1,2})/); if(!d1){ if(/^(Customer|Ship-to|Ship.to|Invoicee|Page|Print date)/i.test(line)) break; continue; }
+        const deliveryDate = normalizeDate(d1[1]); let rest = line.slice(d1[0].length).trim(); let pickupDate = '';
+        const d2 = rest.match(/^(\d{2}\.\s*\d{1,2}\.\s*\d{1,2})/); if(d2){ pickupDate = normalizeDate(d2[1]); rest = rest.slice(d2[0].length).trim(); }
+        const nums = [...rest.matchAll(/([\d,]+)/g)].map(m=>m[1]); const cm = rest.match(/\b(Fix|Forecast|JIT|Firm)\b/i);
+        out.push({'Delivery Date': deliveryDate,'Pickup Date': pickupDate,'Dispatch Qty.': nums[0] ? num(nums[0]) : '','cum. Quantity': nums[1] ? num(nums[1]) : '','Difference': nums[2] ? num(nums[2]) : '','Commit': cm ? cm[1] : ''});
+      }
+      return out;
+    }
+
+    function parseCustomerInfo(text, pageTexts){
+      const lines = pageTexts.flat(); const shipToLabel = extractShipToLabel(text, pageTexts);
+      let customerName = '';
+      for(const p of [/ZF\s+Chassis\s+Modules\s+Toluca[^\n]*/i,/ZF\s+Duncan[^\n]*/i,/ZF\s+South\s+Africa[^\n]*/i,/ZF\s+India[^\n]*/i,/BMW[^\n]*/i]){ const m = text.match(p); if(m){ customerName = m[0].trim().split('\n')[0].trim(); break; } }
+      if(!customerName){ const idx = lines.findIndex(l=>/^(Customer|Ship.to|Ship-to)/i.test(l)); if(idx !== -1){ for(let i=idx+1;i<Math.min(idx+5, lines.length);i++){ const l = lines[i].trim(); if(l && !/^(Name|Address|References|Contact|Partner|Warehouse)/i.test(l)){ customerName=l; break; } } } }
+      const custType = detectCustomerType(customerName, text);
+      let backorderQty = 0; for(const p of [/backorder[:\s]+(-?[\d,]+)/i,/back\s*order[:\s]+(-?[\d,]+)/i]){ const m = text.match(p); if(m){ backorderQty = Number(String(m[1]).replace(/,/g,'')) || 0; break; } }
+      let currentCumReceived = 0;
+      for(const p of [/Current cumulated\s+quantity\s+received[:\s]+([\d,]+)/i,/Current cumulated[:\s]+([\d,]+)/i,/cumulated\s+quantity\s+received[:\s]+([\d,]+)/i]){ const m = text.match(p); if(m){ currentCumReceived = Number(String(m[1]).replace(/,/g,'')) || 0; break; } }
+      if(!currentCumReceived){ for(const line of lines){ if(/current cumulated/i.test(line)){ const arr = line.match(/([\d,]{3,})/g); if(arr && arr.length){ currentCumReceived = Number(arr[arr.length-1].replace(/,/g,'')) || 0; break; } } } }
+      return { customerName, shipToLabel, custType, backorderQty, currentCumReceived };
+    }
+
+    async function parsePDF(file){
+      const data = await file.arrayBuffer(); const pdf = await pdfjsLib.getDocument({data}).promise; let fullText = ''; const pageTexts = [];
+      for(let p=1;p<=pdf.numPages;p++){
+        const page = await pdf.getPage(p); const tc = await page.getTextContent();
+        const items = tc.items.map(i=>({str:i.str, x:Math.round(i.transform[4]), y:Math.round(i.transform[5])})).filter(i=>i.str && i.str.trim());
+        const rows = [];
+        for(const item of items){ let row = rows.find(r=>Math.abs(r.y - item.y) <= 4); if(!row){ row = { y:item.y, items:[] }; rows.push(row); } row.items.push(item); }
+        rows.sort((a,b)=>b.y-a.y);
+        const lines = rows.map(r=>r.items.sort((a,b)=>a.x-b.x).map(i=>i.str).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+        pageTexts.push(lines); fullText += lines.join('\n') + '\n';
+      }
+      const material = parseMaterialInfo(fullText, pageTexts);
+      const reference = parseReferenceData(fullText, pageTexts);
+      const scheduleLines = parseScheduleLines(fullText, pageTexts);
+      const customerInfo = parseCustomerInfo(fullText, pageTexts);
+      return { fileName:file.name, material, reference, scheduleLines, customerInfo };
+    }
+
+    function strToDate(s){ const m = String(s||'').match(/(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; }
+    function dateToStr(d){ if(!d) return ''; const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+    function adjustToWeekday(date, targetDow){ const d = new Date(date); const dow = d.getDay(); const mondayOffset = dow === 0 ? -6 : 1 - dow; const monday = new Date(d); monday.setDate(d.getDate() + mondayOffset); const r = new Date(monday); r.setDate(monday.getDate() + (targetDow - 1)); return r; }
+    function generateWeeks(startDate, endDate, targetDow){ const arr=[]; let cur = adjustToWeekday(new Date(startDate), targetDow); const end = new Date(endDate); if(cur < new Date(startDate)) cur.setDate(cur.getDate()+7); while(cur <= end){ arr.push(dateToStr(cur)); cur = new Date(cur); cur.setDate(cur.getDate()+7); } return arr; }
+    function groupByWeek(scheduleLines, targetDow){ const map = {}; for(const sl of scheduleLines || []){ const d = strToDate(sl['Delivery Date']); if(!d) continue; const wk = dateToStr(adjustToWeekday(d, targetDow)); const qty = typeof sl['Dispatch Qty.'] === 'number' ? sl['Dispatch Qty.'] : 0; map[wk] = (map[wk] || 0) + qty; } return map; }
+
+    function buildShipmentPlan(parsed){
+      const { material, reference, scheduleLines, customerInfo } = parsed;
+      const custType = customerInfo?.custType || 'ZF_DEFAULT'; const targetDow = CUSTOMER_DAY_MAP[custType] ?? 1; const dateLabel = CUSTOMER_DATE_LABEL[custType] || '(출고일)';
+      const backorderQty = customerInfo?.backorderQty || 0; const currentCumReceived = customerInfo?.currentCumReceived || 0; const baseCum = currentCumReceived + backorderQty;
+      const meta = { customerName: customerInfo?.customerName || '', shipToLabel: customerInfo?.shipToLabel || '', materialCustomer: material['Material (Customer)'] || '', deliverynoteNo: reference['Deliverynote Number'] || '', deliverynoteQty: reference['Quantity'] || '', messageNumber: material['Message Number'] || '', transmissionDate: material['Transmission Date'] || '', dinNumber: material['Delivery Instruction Number'] || '', dateLabel, custType };
+      if(!scheduleLines || !scheduleLines.length) return { meta, backorderQty, baseCum, rows:[] };
+      const weekMap = groupByWeek(scheduleLines, targetDow); const planStart = new Date(2026,1,1); const lastDate = scheduleLines.map(x=>strToDate(x['Delivery Date'])).filter(Boolean).sort((a,b)=>b-a)[0]; const planEnd = lastDate ? adjustToWeekday(lastDate, targetDow) : new Date(planStart); const weeks = generateWeeks(planStart, planEnd, targetDow);
+      let running = baseCum; const rows = weeks.map(week=>{ if(weekMap[week] !== undefined){ running += weekMap[week]; return { date:week, qty:weekMap[week], cum:running }; } return { date:week, qty:null, cum:null }; });
+      return { meta, backorderQty, baseCum, rows };
+    }
+
+    function sanitizeSheetName(name, idx){ const s = String(name||`Sheet${idx+1}`).replace(/\.pdf$/i,'').replace(/[\\\/\?\*\[\]:]/g,'_').slice(0,31); return s || `Sheet${idx+1}`; }
+    function sanitizePlanSheetName(materialNo, shipToLabel, idx){ const a = String(materialNo || `Plan${idx+1}`).replace(/[\\\/\?\*\[\]:]/g,'_'); const b = String(shipToLabel || '').replace(/[\\\/\?\*\[\]:]/g,'_'); return (b ? `${a}_${b}` : a).slice(0,31) || `Plan${idx+1}`; }
+    function buildSheet(headers, rows){ const aoa = [headers, ...rows.map(r=>headers.map(h=>r[h] ?? ''))]; const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = headers.map((h,i)=>{ const w = aoa.reduce((m,row)=>Math.max(m, String(row[i] ?? '').length), String(h).length); return { wch: Math.max(10, Math.min(w+2, 42)) }; }); return ws; }
+
+    function exportBaseExcel(allData, options){
+      const { sheetMode='separate', sections } = options;
+      if(!sections.material && !sections.reference && !sections.schedule) throw new Error('내보낼 기본 데이터 섹션이 선택되지 않았습니다.');
+      const wb = XLSX.utils.book_new();
+      if(sheetMode === 'separate'){
+        if(sections.material){
+          const headers = ['Source File','Customer','Material (Customer)','Material (Supplier)','Material Description (Customer)','Material Descr. (Supplier)','Engineering Change Level','UoM','Incoterms','Supply Model','Document No.','Transmission Date','Message Number','Validity Period','Delivery Instruction Number','DIN Date','Delivery Instruction Number Old','DIN Old Date','Order Number','Order Position','Production Release','Material Release','Transport Mode'];
+          const rows = allData.map(d=>({'Source File':d.fileName,'Customer':d.customerInfo?.shipToLabel || '',...d.material}));
+          XLSX.utils.book_append_sheet(wb, buildSheet(headers, rows), 'Material Info');
+        }
+        if(sections.reference){
+          const headers = ['Source File','Customer','Deliverynote Number','Deliverynote Date','Quantity','Current Cumulated Qty Received','Start Date of Current Cumulated Qty','Last Cumulated Qty Before Resetting'];
+          const rows = allData.map(d=>({'Source File':d.fileName,'Customer':d.customerInfo?.shipToLabel || '',...d.reference}));
+          XLSX.utils.book_append_sheet(wb, buildSheet(headers, rows), 'Reference Data');
+        }
+        if(sections.schedule){
+          const headers = ['Source File','Customer','Material (Customer)','Order Number','Order Position','Delivery Date','Pickup Date','Dispatch Qty.','cum. Quantity','Difference','Commit'];
+          const rows = [];
+          allData.forEach(d=>{ (d.scheduleLines || []).forEach(sl=>{ rows.push({'Source File': d.fileName,'Customer': d.customerInfo?.shipToLabel || '','Material (Customer)': d.material['Material (Customer)'],'Order Number': d.material['Order Number'],'Order Position': d.material['Order Position'],...sl}); }); });
+          if(rows.length){ rows.push({'Source File':'합계','Dispatch Qty.': rows.reduce((s,r)=>s+(Number(r['Dispatch Qty.'])||0),0),'cum. Quantity': rows.reduce((s,r)=>s+(Number(r['cum. Quantity'])||0),0)}); }
+          XLSX.utils.book_append_sheet(wb, buildSheet(headers, rows), 'Schedule Lines');
+        }
+      } else {
+        allData.forEach((d,idx)=>{
+          const aoa = []; const customer = d.customerInfo?.shipToLabel || '';
+          if(sections.material){ aoa.push(['=== Material-related Information ===']); aoa.push(['Customer', customer]); aoa.push(['Field','Value']); Object.entries(d.material).forEach(([k,v])=>aoa.push([k,v])); aoa.push([]); }
+          if(sections.reference){ aoa.push(['=== Additional Reference Data ===']); aoa.push(['Field','Value']); Object.entries(d.reference).forEach(([k,v])=>aoa.push([k,v])); aoa.push([]); }
+          if(sections.schedule){ const h = ['Delivery Date','Pickup Date','Dispatch Qty.','cum. Quantity','Difference','Commit']; aoa.push(['=== Schedule Lines ===']); aoa.push(h); (d.scheduleLines || []).forEach(sl=>aoa.push(h.map(x=>sl[x] ?? ''))); if((d.scheduleLines || []).length){ aoa.push(['합계','',d.scheduleLines.reduce((s,r)=>s+(Number(r['Dispatch Qty.'])||0),0),d.scheduleLines.reduce((s,r)=>s+(Number(r['cum. Quantity'])||0),0),'','']); } }
+          const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{wch:36},{wch:40},{wch:16},{wch:16},{wch:14},{wch:12}]; XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(d.fileName, idx));
+        });
+      }
+      const ts = new Date().toISOString().slice(0,10).replace(/-/g,''); XLSX.writeFile(wb, `DELFOR_Extract_${ts}.xlsx`);
+    }
+
+    function appendPlanSheet(wb, plan, idx){
+      const { meta, backorderQty, baseCum, rows } = plan; const aoa = [];
+      aoa.push(['Customer', meta.shipToLabel || '']); aoa.push(['Material (Customer)', meta.materialCustomer || '']); aoa.push(['Deliverynote Number', meta.deliverynoteNo || '']); aoa.push(['Quantity', meta.deliverynoteQty !== '' ? Number(String(meta.deliverynoteQty).replace(/,/g,'')) : '']); aoa.push([]); aoa.push([`Delivery Date ${meta.dateLabel}`, `Message Number: ${meta.messageNumber || ''}`, `Transmission Date: ${meta.transmissionDate || ''}`]); aoa.push(['', `DIN: ${meta.dinNumber || ''}`, '']); aoa.push(['', 'QTY', 'CUM']); aoa.push(['Backorder', backorderQty || 0, baseCum]);
+      const dataStartRow = aoa.length + 1; const Q='B', C='C'; rows.forEach((r,i)=>{ const excelRow = dataStartRow + i; aoa.push([r.date || '', r.qty !== null ? r.qty : '', r.qty !== null ? { f:`${C}${excelRow-1}+${Q}${excelRow}` } : '']); });
+      const last = dataStartRow + rows.length - 1; aoa.push(['합계', { f:`SUM(${Q}${dataStartRow}:${Q}${last})` }, rows.length ? { f:`${C}${last}` } : baseCum]);
+      const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{wch:18},{wch:14},{wch:16}]; ws['!merges'] = [{s:{r:0,c:1},e:{r:0,c:2}},{s:{r:1,c:1},e:{r:1,c:2}},{s:{r:2,c:1},e:{r:2,c:2}},{s:{r:5,c:1},e:{r:5,c:2}}]; XLSX.utils.book_append_sheet(wb, ws, sanitizePlanSheetName(meta.materialCustomer, meta.shipToLabel, idx));
+    }
+
+    function exportPlanExcel(plans){ if(!plans.length) throw new Error('출고 계획 데이터가 없습니다.'); const wb = XLSX.utils.book_new(); plans.forEach((p,i)=>appendPlanSheet(wb,p,i)); const ts = new Date().toISOString().slice(0,10).replace(/-/g,''); XLSX.writeFile(wb, `출고계획표_${ts}.xlsx`); }
+
+    function renderFiles(){
+      const box = $('#fileBox'); const list = $('#fileList');
+      if(!state.files.length){ box.style.display='none'; list.innerHTML=''; $('#extractBtn').disabled=true; return; }
+      box.style.display='block'; $('#extractBtn').disabled=false;
+      list.innerHTML = state.files.map((f,i)=>{ const [cls,text] = fileStatus(i); return `<div class="file-item"><span>📕</span><div class="file-name">${esc(f.name)}</div><div class="file-size">${fmtBytes(f.size)}</div><span class="status ${cls}">${text}</span><button class="btn ghost" style="padding:6px 10px" onclick="removeFile(${i})" type="button">삭제</button></div>`; }).join('');
+    }
+
+    function manualCustTypeToLabel(custType, existing){ const map = { ZF_MEXICO:'ZF MX', ZF_DUNCAN:'ZF US', ZF_SOUTH_AFRICA:'ZF SA', ZF_INDIA:'ZF IN', BMW: existing || 'BMW' }; return map[custType] || existing || ''; }
+
+    function buildTableHTML(headers, rows){
+      if(!rows.length) return `<div class="muted" style="padding:18px">데이터가 없습니다.</div>`;
+      let h = `<div class="table-wrap"><table><thead><tr>${headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>`;
+      rows.forEach(r=>{ h += '<tr>'; headers.forEach(key=>{ const v = r[key]; h += `<td>${v===undefined||v===''?'<span class="muted">-</span>':esc(v)}</td>`; }); h += '</tr>'; });
+      h += '</tbody></table></div>'; return h;
+    }
+
+    function renderPlanView(plan){
+      const { meta, backorderQty, baseCum, rows } = plan; let running = baseCum, totalQty = 0;
+      let html = `<div class="plan-head"><table><tr><td>Customer</td><td><b style="color:#2563eb">${esc(meta.shipToLabel || '')}</b></td></tr><tr><td>Material (Customer)</td><td>${esc(meta.materialCustomer || '')}</td></tr><tr><td>Deliverynote Number</td><td>${esc(meta.deliverynoteNo || '')}</td></tr><tr><td>Quantity</td><td>${esc(meta.deliverynoteQty || '')}</td></tr></table></div><div class="table-wrap"><table class="plan-table"><thead><tr><th rowspan="3">Delivery Date<br><small>${esc(meta.dateLabel)}</small></th><th colspan="2">Message Number: ${esc(meta.messageNumber || '')}</th></tr><tr><th colspan="2">DIN: ${esc(meta.dinNumber || '')} | Transmission Date: ${esc(meta.transmissionDate || '')}</th></tr><tr><th>QTY</th><th>CUM</th></tr></thead><tbody><tr class="backorder"><td>Backorder</td><td class="num">${fmtNum(backorderQty)}</td><td class="num cum">${fmtNum(baseCum)}</td></tr>`;
+      rows.forEach(r=>{ const has = r.qty !== null && r.qty !== ''; if(has){ running += r.qty; totalQty += r.qty; } html += `<tr><td>${esc(r.date)}</td><td class="num">${has?fmtNum(r.qty):''}</td><td class="num cum">${has?fmtNum(running):''}</td></tr>`; });
+      html += `<tr class="total"><td>합계</td><td class="num">${fmtNum(totalQty)}</td><td class="num">${fmtNum(running)}</td></tr>`;
+      html += `</tbody></table></div><div class="note">감지된 고객사 유형: <b>${esc(CUSTOMER_TYPE_TEXT[meta.custType] || meta.custType)}</b> · 기간: 2026-02-01 ~ 마지막 납기일 · 수량 없는 주차는 공백 처리</div>`;
+      return html;
+    }
+
+    function renderResults(){
+      const tabs = []; if($('#optPlan').checked) tabs.push({id:'plan', label:'출고 계획표'}); if($('#optMaterial').checked) tabs.push({id:'material', label:'Material Info'}); if($('#optReference').checked) tabs.push({id:'reference', label:'Reference Data'}); if($('#optSchedule').checked) tabs.push({id:'schedule', label:'Schedule Lines'});
+      if(!tabs.length){ $('#resultCard').style.display='none'; return; }
+      if(!tabs.some(t=>t.id===state.activeTab)) state.activeTab=tabs[0].id;
+      $('#tabs').innerHTML = tabs.map(t=>`<button class="tab ${t.id===state.activeTab?'active':''}" onclick="switchTab('${t.id}')" type="button">${t.label}</button>`).join('');
+      let content = '';
+      if(state.activeTab === 'plan'){
+        const valid = state.plans.map((p,i)=>p?{p,i}:null).filter(Boolean);
+        if(!valid.length) content = `<div class="muted" style="padding:18px">출고 계획 데이터가 없습니다.</div>`;
+        else {
+          if(state.activePlanIdx >= valid.length) state.activePlanIdx = 0;
+          content += `<div class="subtabs">`;
+          valid.forEach((x,idx)=>{ const label = x.p.meta.shipToLabel ? `${x.p.meta.materialCustomer || shortName(state.parsed[x.i]?.fileName)} · ${x.p.meta.shipToLabel}` : (x.p.meta.materialCustomer || `Plan ${idx+1}`); content += `<button class="subtab ${idx===state.activePlanIdx?'active':''}" onclick="switchPlanTab(${idx})" type="button">${esc(label)}</button>`; });
+          content += `</div>`;
+          content += renderPlanView(valid[state.activePlanIdx].p);
+        }
+      }
+      if(state.activeTab === 'material'){
+        const headers = ['Source File','Customer','Material (Customer)','Material Description (Customer)','UoM','Incoterms','Document No.','Message Number','Delivery Instruction Number','DIN Date','Delivery Instruction Number Old','DIN Old Date','Order Number','Order Position','Transmission Date','Production Release','Transport Mode'];
+        const rows = state.parsed.map(d=>({'Source File':shortName(d.fileName),'Customer':d.customerInfo?.shipToLabel || '',...d.material})); content = buildTableHTML(headers, rows);
+      }
+      if(state.activeTab === 'reference'){
+        const headers = ['Source File','Customer','Deliverynote Number','Deliverynote Date','Quantity','Current Cumulated Qty Received','Start Date of Current Cumulated Qty','Last Cumulated Qty Before Resetting'];
+        const rows = state.parsed.map(d=>({'Source File':shortName(d.fileName),'Customer':d.customerInfo?.shipToLabel || '',...d.reference})); content = buildTableHTML(headers, rows);
+      }
+      if(state.activeTab === 'schedule'){
+        const headers = ['Source File','Customer','Material (Customer)','Order Number','Order Position','Delivery Date','Pickup Date','Dispatch Qty.','cum. Quantity','Difference','Commit'];
+        const rows = []; state.parsed.forEach(d=>{ (d.scheduleLines || []).forEach(sl=>{ rows.push({'Source File': shortName(d.fileName),'Customer': d.customerInfo?.shipToLabel || '','Material (Customer)': d.material['Material (Customer)'],'Order Number': d.material['Order Number'],'Order Position': d.material['Order Position'],...sl}); }); });
+        if(rows.length){ rows.push({'Source File':'합계','Dispatch Qty.': rows.reduce((s,r)=>s+(Number(r['Dispatch Qty.'])||0),0),'cum. Quantity': rows.reduce((s,r)=>s+(Number(r['cum. Quantity'])||0),0)}); }
+        content = buildTableHTML(headers, rows);
+      }
+      $('#tabContent').innerHTML = content;
+      const totalFiles = state.parsed.length; const successFiles = state.parsed.filter(x=>!x._error).length; const scheduleRows = state.parsed.reduce((s,d)=>s+((d.scheduleLines||[]).length),0); const planRows = state.plans.reduce((s,p)=>s+((p?.rows||[]).filter(r=>r.qty!==null).length),0);
+      $('#stats').innerHTML = `<div class="stat"><b>${totalFiles}</b><span>처리 파일</span></div><div class="stat"><b>${successFiles}</b><span>성공</span></div><div class="stat"><b>${scheduleRows}</b><span>Schedule Lines</span></div><div class="stat"><b>${planRows}</b><span>출고 계획 주차</span></div>`;
+      $('#resultCard').style.display='block';
+    }
+
+    window.switchTab = function(id){ state.activeTab=id; renderResults(); };
+    window.switchPlanTab = function(i){ state.activePlanIdx=i; renderResults(); };
+    window.removeFile = function(i){ state.files.splice(i,1); state.parsed=[]; state.plans=[]; state.activePlanIdx=0; $('#resultCard').style.display='none'; renderFiles(); };
+    function addFiles(files){ files.forEach(f=>{ const exists = state.files.some(x=>x.name===f.name && x.size===f.size); if(!exists) state.files.push(f); }); renderFiles(); }
+
+    $('#pickBtn').addEventListener('click',()=>$('#fileInput').click());
+    $('#fileInput').addEventListener('change',e=>{ const files = [...e.target.files].filter(f=>/\.pdf$/i.test(f.name)); addFiles(files); e.target.value=''; });
+    $('#clearBtn').addEventListener('click',()=>{ state.files=[]; state.parsed=[]; state.plans=[]; state.activePlanIdx=0; $('#resultCard').style.display='none'; renderFiles(); });
+    const drop = $('#dropZone');
+    drop.addEventListener('click',e=>{ if(e.target.tagName !== 'BUTTON') $('#fileInput').click(); });
+    drop.addEventListener('dragover',e=>{ e.preventDefault(); drop.classList.add('drag'); });
+    drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+    drop.addEventListener('drop',e=>{ e.preventDefault(); drop.classList.remove('drag'); addFiles([...e.dataTransfer.files].filter(f=>/\.pdf$/i.test(f.name))); });
+
+    $('#extractBtn').addEventListener('click', async ()=>{
+      if(!state.files.length) return;
+      state.parsed=[]; state.plans=[]; state.activePlanIdx=0; showLoading(true); const manualType = $('#custType').value;
+      for(let i=0;i<state.files.length;i++){
+        const file = state.files[i]; setProgress(i, state.files.length, `PDF 분석 중: ${file.name}`);
+        try{
+          const result = await parsePDF(file);
+          if(manualType !== 'auto' && result.customerInfo){ result.customerInfo.custType = manualType; result.customerInfo.shipToLabel = manualCustTypeToLabel(manualType, result.customerInfo.shipToLabel); }
+          state.parsed.push(result); state.plans.push(buildShipmentPlan(result));
+        }catch(err){
+          console.error(err); state.parsed.push({fileName:file.name,_error:err.message,material:{},reference:{},scheduleLines:[],customerInfo:{customerName:'',shipToLabel:'',custType:'ZF_DEFAULT',backorderQty:0,currentCumReceived:0}}); state.plans.push(null);
+        }
+        renderFiles();
+      }
+      setProgress(state.files.length, state.files.length, '완료'); await delay(350); showLoading(false); renderResults(); $('#resultCard').scrollIntoView({behavior:'smooth',block:'start'});
+    });
+
+    $('#downloadBase').addEventListener('click',()=>{
+      try{ exportBaseExcel(state.parsed,{ sheetMode: document.querySelector('input[name="sheetMode"]:checked').value, sections: { material: $('#optMaterial').checked, reference: $('#optReference').checked, schedule: $('#optSchedule').checked } }); showToast('기본 데이터 Excel 다운로드 완료'); }catch(err){ showToast(`다운로드 오류: ${err.message}`,'err'); }
+    });
+    $('#downloadPlan').addEventListener('click',()=>{ try{ exportPlanExcel(state.plans.filter(Boolean)); showToast('출고 계획표 Excel 다운로드 완료'); }catch(err){ showToast(`다운로드 오류: ${err.message}`,'err'); } });
+    ['#optMaterial','#optReference','#optSchedule','#optPlan'].forEach(sel=>{ $(sel).addEventListener('change',()=>{ if(state.parsed.length) renderResults(); }); });
+    renderFiles();
+  </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
